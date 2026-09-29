@@ -4,6 +4,7 @@ import com.example.floodmonitor.model.Station;
 import com.example.floodmonitor.service.SimulationService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,7 +20,13 @@ public class StationController {
     }
 
     @GetMapping("/stations")
-    public List<Station> getStations() {
-        return simulationService.generateStations();
+    public List<Station> getStations(@RequestParam(required = false) String id) {
+        List<Station>  stations = simulationService.generateStations();
+        if (id == null) {
+            return stations;
+        }
+        return stations.stream()
+                .filter(s -> s.getId().equals(id))
+                .toList();
     }
 }
