@@ -6,7 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @RestController
@@ -25,13 +26,19 @@ public class StationController {
         if (id == null) {
             return stations;
         }
-        return stations.stream()
+        List<Station> result = stations.stream()
                 .filter(s -> s.getId().equals(id))
                 .toList();
+
+        if (result.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Station mit der ID " + id + " existiert nicht");
+        }
+        return result;
     }
 
-    @GetMapping("count")
+    @GetMapping("/count")
     public int getCount(){
-
+        return simulationService.generateStations().size();
     }
 }
