@@ -2,6 +2,7 @@ package com.example.floodmonitor.controller;
 
 import com.example.floodmonitor.model.Station;
 import com.example.floodmonitor.service.SimulationService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,7 @@ public class StationController {
         this.simulationService = simulationService;
     }
 
-    @GetMapping("/stations")
+    @GetMapping(value = "/stations", produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
     public List<Station> getStations(@RequestParam(required = false) String id) {
         List<Station>  stations = simulationService.getStations();
         if (id == null) {
@@ -35,7 +36,9 @@ public class StationController {
         return result;
     }
 
-    @PostMapping("/stations")
+    @PostMapping(value = "/stations",
+            consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE},
+            produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
     public ResponseEntity<Station> addStation(@RequestBody Station station){
         if (simulationService.existsById(station.getId())){
             throw new ResponseStatusException(
@@ -45,7 +48,7 @@ public class StationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(station);
     }
 
-    @GetMapping("/count")
+    @GetMapping(value = "/count", produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
     public int getCount(){
         return simulationService.getCount();
     }

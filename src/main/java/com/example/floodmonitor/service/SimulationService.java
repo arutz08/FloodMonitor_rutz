@@ -28,7 +28,7 @@ public class SimulationService {
     }
 
     public List<Station> getStations() {
-        return stations;
+        return new ArrayList<>(stations);
     }
 
     public boolean existsById(String id) {
