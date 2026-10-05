@@ -2,10 +2,8 @@ package com.example.floodmonitor.controller;
 
 import com.example.floodmonitor.model.Station;
 import com.example.floodmonitor.service.SimulationService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
@@ -22,7 +20,7 @@ public class StationController {
 
     @GetMapping("/stations")
     public List<Station> getStations(@RequestParam(required = false) String id) {
-        List<Station>  stations = simulationService.generateStations();
+        List<Station>  stations = simulationService.getStations();
         if (id == null) {
             return stations;
         }
@@ -37,8 +35,18 @@ public class StationController {
         return result;
     }
 
+    @PostMapping("/stations")
+    public ResponseEntity<Station> addStation(@RequestBody Station station){
+        if (simulationService.existsById(station.getId())){
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Station mit der ID " + station.getId() + " existiert bereits");
+        }
+        simulationService.addStation(station);
+        return ResponseEntity.status(HttpStatus.CREATED).body(station);
+    }
+
     @GetMapping("/count")
     public int getCount(){
-        return simulationService.generateStations().size();
+        return simulationService.getCount();
     }
 }
