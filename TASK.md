@@ -346,7 +346,7 @@ Die Aufgabe ist vollständig umgesetzt, wenn:
 Die Abgabe erfolgt über ein Git-Repository und enthält:
 
 - vollständigen Quellcode,
-- `README.md`,
+- `../untitled/README.md`,
 - Build-Konfiguration,
 - Konfigurationsbeispiel ohne geheime Zugangsdaten,
 - automatisierte Tests,

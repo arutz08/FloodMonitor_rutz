@@ -29,4 +29,9 @@ public class StationController {
                 .filter(s -> s.getId().equals(id))
                 .toList();
     }
+
+    @GetMapping("count")
+    public int getCount(){
+
+    }
 }
