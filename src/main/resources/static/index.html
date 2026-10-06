@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hochwasser-Frühwarnsystem</title>
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 30px 20px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+        }
+
+        header .title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header .title-group i {
+            font-size: 2rem;
+            color: var(--primary);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Card System */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .card-header h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        /* Controls Grid */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.825rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fff;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.2s ease;
+            height: 42px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Latest Dashboard Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+        }
+
+        .metric-card {
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .metric-card .label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .metric-card .value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .metric-card .unit {
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        /* Badges */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-NORMAL { background-color: #dcfce7; color: #15803d; }
+        .badge-WARNING { background-color: #fef3c7; color: #b45309; }
+        .badge-CRITICAL { background-color: #fee2e2; color: #b91c1c; }
+        .badge-UNKNOWN { background-color: #f1f5f9; color: #475569; }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        /* Error Box & Loader */
+        #errorBox {
+            display: none;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            display: none;
+            animation: spin 1s linear infinite;
+            color: var(--primary);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="title-group">
+        <i class="fa-solid => fa-water"></i>
+        <h1>Hochwasser-Frühwarnsystem</h1>
+    </div>
+</header>
+
+<div id="errorBox" style="display: none;">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span id="errorMsg"></span>
+</div>
+
+<!-- Steuerung & Filter -->
+<div class="card">
+    <div class="controls-grid">
+        <div class="form-group">
+            <label for="stationSelect">Messstation</label>
+            <select id="stationSelect"><option value="">-- Lädt --</option></select>
+        </div>
+
+        <div class="form-group">
+            <label for="formatSelect">Format</label>
+            <select id="formatSelect">
+                <option value="application/json">JSON</option>
+                <option value="application/xml">XML</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="sortSelect">Sortierung</label>
+            <select id="sortSelect">
+                <option value="DESC">Neueste zuerst</option>
+                <option value="ASC">Älteste zuerst</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fromInput">Von</label>
+            <input type="datetime-local" id="fromInput">
+        </div>
+
+        <div class="form-group">
+            <label for="toInput">Bis</label>
+            <input type="datetime-local" id="toInput">
+        </div>
+
+        <div class="form-group">
+            <label for="warningSelect">Warnstufe</label>
+            <select id="warningSelect">
+                <option value="">Alle Stufen</option>
+                <option value="NORMAL">NORMAL</option>
+                <option value="WARNING">WARNING</option>
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="UNKNOWN">UNKNOWN</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="limitInput">Limit</label>
+            <input type="number" id="limitInput" placeholder="50" min="1">
+        </div>
+
+        <div class="form-group">
+            <button id="btnFilter" class="btn-primary">
+                <i class="fa-solid fa-filter"></i> Filtern
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Aktuellste Messung -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fa-solid fa-gauge-high"></i> Aktuellster Messwert</h2>
+        <i id="loadingSpinner" class="fa-solid fa-circle-notch spinner"></i>
+    </div>
+    <div id="latestDataGrid" class="metrics-grid">
+        <div style="grid-column: 1 / -1; color: var(--text-muted);">Keine Station ausgewählt.</div>
+    </div>
+</div>
+
+<!-- Historische Daten -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fa-solid fa-clock-rotate-left"></i> Historische Messwerte</h2>
+    </div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+            <tr>
+                <th>Zeitpunkt</th>
+                <th>Wasserstand (cm)</th>
+                <th>Durchfluss (m³/s)</th>
+                <th>Niederschlag (mm/h)</th>
+                <th>Temperatur (°C)</th>
+                <th>Akku (%)</th>
+                <th>Warnstufe</th>
+            </tr>
+            </thead>
+            <tbody id="measurementsTable">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Keine Daten geladen.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Kommentar: Globale Speicherung der Messdaten
+    let currentMeasurements = [];
+
+    $(document).ready(function() {
+        loadStations();
+
+        $("#stationSelect").change(loadAllData);
+        $("#btnFilter").click(loadAllData);
+        $("#formatSelect").change(loadAllData);
+        $("#sortSelect").change(applySortAndRender);
+        $("#warningSelect").change(applySortAndRender);
+
+        setInterval(function() {
+            if ($("#stationSelect").val()) {
+                loadAllData();
+            }
+        }, 10000);
+    });
+
+    function showError(msg) {
+        $("#errorMsg").text(msg);
+        $("#errorBox").flex();
+    }
+
+    function clearError() {
+        $("#errorBox").hide();
+    }
+
+    function loadStations() {
+        $.ajax({
+            url: "/api/v1/stations",
+            type: "GET",
+            headers: { "Accept": "application/json" },
+            success: function(stations) {
+                let select = $("#stationSelect").empty();
+                if (!stations || stations.length === 0) {
+                    select.append('<option value="">Keine Stationen</option>');
+                    return;
+                }
+                stations.forEach(s => {
+                    let name = s.stationName || s.name || ("Station " + s.id);
+                    select.append(`<option value="${s.id}">${name} (ID: ${s.id})</option>`);
+                });
+                loadAllData();
+            },
+            error: function(xhr) {
+                showError("Fehler beim Laden der Stationen: " + getErrorMessage(xhr));
+            }
+        });
+    }
+
+    function loadAllData() {
+        clearError();
+        let stationId = $("#stationSelect").val();
+        if (!stationId) return;
+
+        let format = $("#formatSelect").val();
+        $("#loadingSpinner").show();
+
+        // 1. Latest Data
+        $.ajax({
+            url: `/api/v1/stations/${stationId}/measurements/latest`,
+            type: "GET",
+            headers: { "Accept": format },
+            dataType: format === "application/xml" ? "xml" : "json",
+            success: function(data) {
+                let m = parseMeasurement(data, format);
+                renderLatestCard(m);
+            },
+            error: function(xhr) {
+                $("#latestDataGrid").html('<div style="grid-column: 1/-1; color: var(--text-muted);">Kein aktiver Messwert verfügbar.</div>');
+                showError("Fehler beim Laden des neuesten Messwerts: " + getErrorMessage(xhr));
+            }
+        });
+
+        // 2. History Data
+        let queryParams = [];
+        let from = $("#fromInput").val();
+        let to = $("#toInput").val();
+        let level = $("#warningSelect").val();
+        let limit = $("#limitInput").val();
+
+        if (from) queryParams.push("from=" + new Date(from).toISOString());
+        if (to) queryParams.push("to=" + new Date(to).toISOString());
+        if (level) queryParams.push("warningLevel=" + level);
+        if (limit) queryParams.push("limit=" + limit);
+
+        let queryString = queryParams.length > 0 ? "?" + queryParams.join("&") : "";
+
+        $.ajax({
+            url: `/api/v1/stations/${stationId}/measurements` + queryString,
+            type: "GET",
+            headers: { "Accept": format },
+            dataType: format === "application/xml" ? "xml" : "json",
+            success: function(data) {
+                currentMeasurements = parseMeasurementList(data, format);
+                applySortAndRender();
+                $("#loadingSpinner").hide();
+            },
+            error: function(xhr) {
+                $("#measurementsTable").html('<tr><td colspan="7" style="text-align:center;">Fehler beim Laden der Daten.</td></tr>');
+                showError("Fehler beim Laden der historischen Messwerte: " + getErrorMessage(xhr));
+                $("#loadingSpinner").hide();
+            }
+        });
+    }
+
+    // Kommentar: Robustes Parsing für JSON & XML mit allen Mapping-Fallbacks
+    function parseMeasurement(node, format) {
+        if (format === "application/xml") {
+            let $node =$(node);
+            let getVal = function(tags) {
+                for (let tag of tags) {
+                    let val = $node.find(tag).first().text();
+                    if (val !== undefined && val !== null && val !== "") return val;
+                }
+                return '-';
+            };
+
+            return {
+                timestamp: getVal(["timestamp", "time", "date"]),
+                waterLevel: getVal(["waterLevel", "waterlevel", "level"]),
+                flowRate: getVal(["waterFlow", "waterflow", "flowRate", "flowrate", "flow"]),
+                rainfall: getVal(["precipitation", "rainfall", "rain"]),
+                temperature: getVal(["waterTemperature", "watertemperature", "temperature", "temp"]),
+                batteryLevel: getVal(["batteryLevel", "batterylevel", "battery"]),
+                warningLevel: getVal(["warningLevel", "warninglevel"])
+            };
+        } else {
+            return {
+                timestamp: node.timestamp || node.time || '-',
+                waterLevel: node.waterLevel ?? node.waterlevel ?? '-',
+                flowRate: node.waterFlow ?? node.flowRate ?? node.flowrate ?? '-',
+                rainfall: node.precipitation ?? node.rainfall ?? node.rain ?? '-',
+                temperature: node.waterTemperature ?? node.temperature ?? node.temp ?? '-',
+                batteryLevel: node.batteryLevel ?? node.batterylevel ?? '-',
+                warningLevel: node.warningLevel || node.warninglevel || 'UNKNOWN'
+            };
+        }
+    }
+
+    function parseMeasurementList(data, format) {
+        let list = [];
+        if (format === "application/xml") {
+            let $xml =$(data);
+            let nodes = $xml.find("item, measurement, Measurement");
+            if (nodes.length === 0) {
+                nodes = $xml.children().children();
+            }
+            nodes.each(function() {
+                list.push(parseMeasurement(this, "application/xml"));
+            });
+        } else {
+            if (Array.isArray(data)) {
+                list = data.map(item => parseMeasurement(item, "json"));
+            }
+        }
+        return list;
+    }
+
+    function applySortAndRender() {
+        let selectedLevel = $("#warningSelect").val();
+        let order = $("#sortSelect").val() || "DESC";
+
+        let filteredList = currentMeasurements.filter(m => {
+            if (!selectedLevel) return true;
+            return String(m.warningLevel).toUpperCase() === String(selectedLevel).toUpperCase();
+        });
+
+        filteredList.sort((a, b) => {
+            let dateA = new Date(a.timestamp);
+            let dateB = new Date(b.timestamp);
+            if (isNaN(dateA)) return 0;
+            return order === "DESC" ? dateB - dateA : dateA - dateB;
+        });
+
+        renderTable(filteredList);
+    }
+
+    function formatDate(isoStr) {
+        if (!isoStr || isoStr === '-') return '-';
+        let d = new Date(isoStr);
+        if (isNaN(d)) return isoStr;
+        return d.toLocaleString('de-DE');
+    }
+
+    function renderLatestCard(m) {
+        let html = `
+        <div class="metric-card">
+            <span class="label"><i class="fa-regular fa-clock"></i> Zeitpunkt</span>
+            <span class="value" style="font-size: 1.1rem;">${formatDate(m.timestamp)}</span>
+        </div>
+        <div class="metric-card">
+            <span class="label"><i class="fa-solid fa-ruler-vertical"></i> Wasserstand</span>
+            <span class="value">${m.waterLevel} <span class="unit">cm</span></span>
+        </div>
+        <div class="metric-card">
+            <span class="label"><i class="fa-solid fa-water"></i> Durchfluss</span>
+            <span class="value">${m.flowRate} <span class="unit">m³/s</span></span>
+        </div>
+        <div class="metric-card">
+            <span class="label"><i class="fa-solid fa-cloud-rain"></i> Niederschlag</span>
+            <span class="value">${m.rainfall} <span class="unit">mm/h</span></span>
+        </div>
+        <div class="metric-card">
+            <span class="label"><i class="fa-solid fa-temperature-half"></i> Temperatur</span>
+            <span class="value">${m.temperature} <span class="unit">°C</span></span>
+        </div>
+        <div class="metric-card">
+            <span class="label"><i class="fa-solid fa-battery-three-quarters"></i> Akku</span>
+            <span class="value">${m.batteryLevel}<span class="unit">%</span></span>
+        </div>
+        <div class="metric-card">
+            <span class="label"><i class="fa-solid fa-triangle-exclamation"></i> Warnstufe</span>
+            <div><span class="badge badge-${m.warningLevel}">${m.warningLevel}</span></div>
+        </div>
+    `;
+        $("#latestDataGrid").html(html);
+    }
+
+    function renderTable(list) {
+        let tbody = $("#measurementsTable").empty();
+        if (!list || list.length === 0) {
+            tbody.append('<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Keine Messwerte vorhanden.</td></tr>');
+            return;
+        }
+
+        list.forEach(m => {
+            let row = `<tr>
+            <td>${formatDate(m.timestamp)}</td>
+            <td><strong>${m.waterLevel}</strong></td>
+            <td>${m.flowRate}</td>
+            <td>${m.rainfall}</td>
+            <td>${m.temperature}</td>
+            <td>${m.batteryLevel}${m.batteryLevel !== '-' ? '%' : ''}</td>
+            <td><span class="badge badge-${m.warningLevel}">${m.warningLevel}</span></td>
+        </tr>`;
+            tbody.append(row);
+        });
+    }
+
+    function getErrorMessage(xhr) {
+        if (xhr.responseText) {
+            try {
+                let json = JSON.parse(xhr.responseText);
+                if (json.message) return json.message;
+            } catch (e) {
+                let xmlMsg = $(xhr.responseText).find("message").text();
+                if (xmlMsg) return xmlMsg;
+            }
+        }
+        return xhr.statusText + " (Status " + xhr.status + ")";
+    }
+</script>
+</body>
+</html>
