@@ -1,44 +1,68 @@
 package com.example.floodmonitor.model;
 
 public class Station {
+
     private String id;
     private String stationName;
-    private String timestamp;
-    private double waterLevel;
-    private double waterTemperature;
-    private String unit;
-    private double waterFlow;
+    private String river;
+    private double warningThreshold = 2.5;
+    private double criticalThreshold = 4.0;
+    private StationStatus status = StationStatus.ACTIVE;
+    private WarningLevel warningLevel = WarningLevel.UNKNOWN;
 
-    public Station() {}
+    public String getId() {
+        return id;
+    }
 
-    public Station(String id, String stationName, String timestamp, double waterLevel, double waterTemperature, String unit, double waterFlow) {
+    public void setId(String id) {
         this.id = id;
+    }
+
+    public String getStationName() {
+        return stationName;
+    }
+
+    public void setStationName(String stationName) {
         this.stationName = stationName;
-        this.timestamp = timestamp;
-        this.waterLevel = waterLevel;
-        this.waterTemperature = waterTemperature;
-        this.unit = unit;
-        this.waterFlow = waterFlow;
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public String getStationName() { return stationName; }
-    public void setStationName(String stationName) { this.stationName = stationName; }
-    public String getTimestamp() { return timestamp; }
-    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
-    public double getWaterLevel() { return waterLevel; }
-    public void setWaterLevel(double waterLevel) { this.waterLevel = waterLevel; }
-    public double getWaterTemperature() { return waterTemperature; }
-    public void setWaterTemperature(double waterTemperature) { this.waterTemperature = waterTemperature; }
-    public String getUnit() { return unit; }
-    public void setUnit(String unit) { this.unit = unit; }
-
-    public double getWaterFlow() {
-        return waterFlow;
+    public String getRiver() {
+        return river;
     }
 
-    public void setWaterFlow(double waterFlow) {
-        this.waterFlow = waterFlow;
+    public void setRiver(String river) {
+        this.river = river;
+    }
+
+    public double getWarningThreshold() {
+        return warningThreshold;
+    }
+
+    public void setWarningThreshold(double warningThreshold) {
+        this.warningThreshold = warningThreshold;
+    }
+
+    public double getCriticalThreshold() {
+        return criticalThreshold;
+    }
+
+    public void setCriticalThreshold(double criticalThreshold) {
+        this.criticalThreshold = criticalThreshold;
+    }
+
+    public StationStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(StationStatus status) {
+        this.status = status;
+    }
+
+    public WarningLevel getWarningLevel() {
+        return warningLevel;
+    }
+
+    public void setWarningLevel(WarningLevel warningLevel) {
+        this.warningLevel = warningLevel;
     }
 }
