@@ -1,12 +1,13 @@
 package com.example.floodmonitor.service;
 
-import com.example.floodmonitor.repository.StationRepository;
 import com.example.floodmonitor.model.*;
-import com.example.floodmonitor.repository.MeasurementRepository;
+import com.example.floodmonitor.Repository.MeasurementRepository;
+import com.example.floodmonitor.Repository.StationRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import com.example.floodmonitor.exception.InvalidInputException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -150,8 +151,21 @@ public class SimulationService {
                 .toList();
     }
 
+    // Kommentar: Validierungs-Hilfsmethode für Filterparameter
+    private void validateMeasurementFilterParams(Instant from, Instant to, Integer limit) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new InvalidInputException("Startzeitpunkt (from) darf nicht nach dem Endzeitpunkt (to) liegen");
+        }
+        if (limit != null && limit < 0) {
+            throw new InvalidInputException("Das Limit darf nicht negativ sein");
+        }
+    }
+
     public List<Measurement> filterMeasurements(Station s, Instant from, Instant to,
                                                 WarningLevel level, Integer limit) {
+        // Kommentar: Erst Parameter validieren
+        validateMeasurementFilterParams(from, to, limit);
+
         List<Measurement> result = measurementRepository.findByStationId(s.getId()).stream()
                 .filter(m -> from == null || !m.timestamp().isBefore(from))
                 .filter(m -> to == null || !m.timestamp().isAfter(to))
@@ -241,12 +255,14 @@ public class SimulationService {
         return generated;
     }
 
-    private static double round(double v, int digits) {
-        double f = Math.pow(10, digits);
-        return Math.round(v * f) / f;
+    // Kommentar: Statische Mathe-Hilfsmethoden
+    private static double round(double value, int places) {
+        if (places < 0) throw new IllegalArgumentException();
+        double factor = Math.pow(10, places);
+        return Math.round(value * factor) / factor;
     }
 
-    private static double clamp(double v, double min, double max) {
-        return Math.max(min, Math.min(max, v));
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

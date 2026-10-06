@@ -96,14 +96,18 @@ public class StationController {
 
     @GetMapping(value = "/stations/{stationId}/measurements",
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
-    public List<Measurement> getMeasurements(@PathVariable String stationId) {
+    public List<Measurement> getMeasurements(@PathVariable String stationId,
+                                             @RequestParam(required = false) java.time.Instant from,
+                                             @RequestParam(required = false) java.time.Instant to,
+                                             @RequestParam(required = false) WarningLevel level,
+                                             @RequestParam(required = false) Integer limit) {
         Station s = simulationService.findById(stationId);
         if (s == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "Station mit der ID " + stationId + " existiert nicht");
         }
-        // Kommentar: Verwende neue Hilfsmethode im Service
-        return simulationService.getMeasurements(s);
+        // Kommentar: Ruft filterMeasurements auf, womit Validierung und Filter greifen
+        return simulationService.filterMeasurements(s, from, to, level, limit);
     }
 
     @GetMapping(value = "/alerts",
