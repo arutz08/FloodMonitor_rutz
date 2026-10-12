@@ -1,4 +1,4 @@
-package com.example.floodmonitor.Repository;
+package com.example.floodmonitor.repository;
 
 import com.example.floodmonitor.model.Station;
 import org.springframework.stereotype.Repository;
@@ -32,5 +32,9 @@ public class StationRepository {
 
     public int count() {
         return stations.size();
+    }
+
+    public void deleteAll() {
+        stations.clear();
     }
 }

@@ -1,13 +1,16 @@
 package com.example.floodmonitor.service;
 
-import com.example.floodmonitor.model.*;
-import com.example.floodmonitor.Repository.MeasurementRepository;
-import com.example.floodmonitor.Repository.StationRepository;
+import com.example.floodmonitor.model.Measurement;
+import com.example.floodmonitor.model.Station;
+import com.example.floodmonitor.model.StationStatus;
+import com.example.floodmonitor.model.Statistics;
+import com.example.floodmonitor.model.WarningLevel;
+import com.example.floodmonitor.repository.MeasurementRepository;
+import com.example.floodmonitor.repository.StationRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import com.example.floodmonitor.exception.InvalidInputException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,30 +28,24 @@ public class SimulationService {
     };
     private static final String[] RIVERS = {"Donau", "Donau", "Salzach", "Mur", "Inn"};
 
-    private static final double BASE_LEVEL = 1.5;
-    private static final double FLOW_FACTOR = 12.0;
-    private static final double LOW_BATTERY = 10.0;
+    private static final double BASE_LEVEL = 1.5;      // normaler Wasserstand (m)
+    private static final double FLOW_FACTOR = 12.0;    // Durchfluss = 12 * h^1.5 (m³/s)
+    private static final double LOW_BATTERY = 10.0;    // darunter -> MAINTENANCE
 
     private final Random random = new Random();
     private final StationRepository stationRepository;
     private final MeasurementRepository measurementRepository;
 
+    @Value("${simulation.interval:10000}")
+    private long intervalMs;
+
+    @Value("${simulation.enabled:true}")
+    private boolean enabled;
+
     public SimulationService(StationRepository stationRepository,
                              MeasurementRepository measurementRepository) {
         this.stationRepository = stationRepository;
         this.measurementRepository = measurementRepository;
-    }
-
-    @Value("${simulation.interval:10000}")
-    private long intervalMs;
-
-    // Kommentar: Neue Hilfsmethoden
-    public Measurement getLatestMeasurement(Station s) {
-        return measurementRepository.findLatest(s.getId()).orElse(null);
-    }
-
-    public List<Measurement> getMeasurements(Station s) {
-        return measurementRepository.findByStationId(s.getId());
     }
 
     @PostConstruct
@@ -63,11 +60,12 @@ public class SimulationService {
 
     @Scheduled(fixedRateString = "${simulation.interval:10000}")
     public void simulate() {
+        if (!enabled) return;   // in Tests abgeschaltet
         for (Station s : stationRepository.findAll()) {
             switch (s.getStatus()) {
                 case ACTIVE -> simulateMeasurement(s);
                 case MAINTENANCE -> performMaintenance(s);
-                default -> { }
+                default -> { } // DISABLED, FAILED: keine neue Messung
             }
             s.setWarningLevel(calculateWarningLevel(s));
         }
@@ -77,12 +75,14 @@ public class SimulationService {
         Measurement prev = getLatestMeasurement(s);
         if (prev == null) return;
 
+        // Niederschlag klingt ab, mit kleiner Chance auf ein neues Regenereignis
         double rain = prev.precipitation() * 0.9;
         if (random.nextDouble() < 0.05) {
             rain += 5 + random.nextDouble() * 15;
         }
         rain = round(Math.min(rain, 30.0), 1);
 
+        // Wasserstand baut auf dem vorherigen Wert auf
         double level = prev.waterLevel();
         level += rain * 0.02 - (level - BASE_LEVEL) * 0.05 + random.nextGaussian() * 0.03;
         level = round(Math.max(0.0, level), 2);
@@ -91,19 +91,21 @@ public class SimulationService {
         double temp = round(clamp(prev.waterTemperature() + random.nextGaussian() * 0.1, 0.0, 30.0), 1);
         double battery = round(clamp(prev.batteryLevel() - (0.2 + random.nextDouble() * 0.6), 0.0, 100.0), 1);
 
-        measurementRepository.add(s.getId(), new Measurement(Instant.now(), level, temp, flow, rain, battery,
-                levelFor(s, level, rain)));
+        measurementRepository.add(s.getId(), new Measurement(
+                Instant.now(), level, temp, flow, rain, battery, levelFor(s, level, rain)));
 
         if (battery < LOW_BATTERY) {
             s.setStatus(StationStatus.MAINTENANCE);
         }
     }
 
+    // Wartung: Akku wird geladen, Wasserwerte bleiben unverändert
     private void performMaintenance(Station s) {
         Measurement prev = getLatestMeasurement(s);
         if (prev == null) return;
         double battery = round(Math.min(100.0, prev.batteryLevel() + 20.0), 1);
-        measurementRepository.add(s.getId(), new Measurement(Instant.now(), prev.waterLevel(), prev.waterTemperature(),
+        measurementRepository.add(s.getId(), new Measurement(
+                Instant.now(), prev.waterLevel(), prev.waterTemperature(),
                 prev.waterFlow(), prev.precipitation(), battery, WarningLevel.UNKNOWN));
         if (battery >= 80.0) {
             s.setStatus(StationStatus.ACTIVE);
@@ -112,11 +114,12 @@ public class SimulationService {
 
     // ---------- Warnstufe ----------
 
-    /** Reine Wertebewertung (für jede einzelne Messung). */
+    /** Bewertung einer einzelnen Messung. */
     private WarningLevel levelFor(Station s, double waterLevel, double precipitation) {
         if (waterLevel < 0) return WarningLevel.UNKNOWN;
         if (waterLevel >= s.getCriticalThreshold()) return WarningLevel.CRITICAL;
         if (waterLevel >= s.getWarningThreshold()) return WarningLevel.WARNING;
+        // Optionale Regel: starker Regen + Wasserstand nahe am Warnwert
         if (precipitation >= 15.0 && waterLevel >= 0.8 * s.getWarningThreshold()) {
             return WarningLevel.WARNING;
         }
@@ -151,27 +154,22 @@ public class SimulationService {
                 .toList();
     }
 
-    // Kommentar: Validierungs-Hilfsmethode für Filterparameter
-    private void validateMeasurementFilterParams(Instant from, Instant to, Integer limit) {
-        if (from != null && to != null && from.isAfter(to)) {
-            throw new InvalidInputException("Startzeitpunkt (from) darf nicht nach dem Endzeitpunkt (to) liegen");
-        }
-        if (limit != null && limit < 0) {
-            throw new InvalidInputException("Das Limit darf nicht negativ sein");
-        }
+    public Measurement getLatestMeasurement(Station s) {
+        return measurementRepository.findLatest(s.getId()).orElse(null);
+    }
+
+    public List<Measurement> getMeasurements(Station s) {
+        return measurementRepository.findByStationId(s.getId());
     }
 
     public List<Measurement> filterMeasurements(Station s, Instant from, Instant to,
                                                 WarningLevel level, Integer limit) {
-        // Kommentar: Erst Parameter validieren
-        validateMeasurementFilterParams(from, to, limit);
-
         List<Measurement> result = measurementRepository.findByStationId(s.getId()).stream()
                 .filter(m -> from == null || !m.timestamp().isBefore(from))
                 .filter(m -> to == null || !m.timestamp().isAfter(to))
                 .filter(m -> level == null || m.warningLevel() == level)
                 .toList();
-        // limit: die neuesten N Einträge
+        // limit: die neuesten N Einträge (Reihenfolge bleibt aufsteigend)
         if (limit != null && limit < result.size()) {
             result = result.subList(result.size() - limit, result.size());
         }
@@ -204,7 +202,7 @@ public class SimulationService {
 
     public Station addStation(Station station) {
         if (station.getStatus() == null) station.setStatus(StationStatus.ACTIVE);
-        station.setWarningLevel(calculateWarningLevel(station));
+        station.setWarningLevel(calculateWarningLevel(station)); // UNKNOWN, da noch keine Messung
         return stationRepository.save(station);
     }
 
@@ -255,14 +253,14 @@ public class SimulationService {
         return generated;
     }
 
-    // Kommentar: Statische Mathe-Hilfsmethoden
-    private static double round(double value, int places) {
-        if (places < 0) throw new IllegalArgumentException();
-        double factor = Math.pow(10, places);
-        return Math.round(value * factor) / factor;
+    // ---------- Hilfsmethoden ----------
+
+    private static double round(double v, int digits) {
+        double f = Math.pow(10, digits);
+        return Math.round(v * f) / f;
     }
 
-    private static double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
+    private static double clamp(double v, double min, double max) {
+        return Math.max(min, Math.min(max, v));
     }
 }

@@ -23,7 +23,6 @@
             --primary-hover: #1d4ed8;
             --radius: 12px;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
         }
 
         * {
@@ -92,6 +91,11 @@
             color: var(--text-main);
         }
 
+        .filter-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
         /* Controls Grid */
         .controls-grid {
             display: grid;
@@ -147,10 +151,19 @@
             gap: 8px;
             transition: background-color 0.2s ease;
             height: 42px;
+            width: 100%;
         }
 
         .btn-primary:hover {
             background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
         }
 
         /* Latest Dashboard Grid */
@@ -250,7 +263,6 @@
 
         /* Error Box & Loader */
         #errorBox {
-            display: none;
             background-color: #fef2f2;
             border: 1px solid #fecaca;
             color: #991b1b;
@@ -258,7 +270,6 @@
             border-radius: 8px;
             margin-bottom: 20px;
             font-size: 0.9rem;
-            display: flex;
             align-items: center;
             gap: 10px;
         }
@@ -279,7 +290,7 @@
 
 <header>
     <div class="title-group">
-        <i class="fa-solid => fa-water"></i>
+        <i class="fa-solid fa-water"></i>
         <h1>Hochwasser-Frühwarnsystem</h1>
     </div>
 </header>
@@ -344,6 +355,12 @@
                 <i class="fa-solid fa-filter"></i> Filtern
             </button>
         </div>
+
+        <div class="form-group">
+            <button id="btnReset" class="btn-primary btn-secondary">
+                <i class="fa-solid fa-rotate-left"></i> Zurücksetzen
+            </button>
+        </div>
     </div>
 </div>
 
@@ -362,13 +379,14 @@
 <div class="card">
     <div class="card-header">
         <h2><i class="fa-solid fa-clock-rotate-left"></i> Historische Messwerte</h2>
+        <span id="filterHint" class="filter-hint"></span>
     </div>
     <div class="table-responsive">
         <table>
             <thead>
             <tr>
                 <th>Zeitpunkt</th>
-                <th>Wasserstand (cm)</th>
+                <th>Wasserstand (m)</th>
                 <th>Durchfluss (m³/s)</th>
                 <th>Niederschlag (mm/h)</th>
                 <th>Temperatur (°C)</th>
@@ -384,19 +402,27 @@
 </div>
 
 <script>
-    // Kommentar: Globale Speicherung der Messdaten
+    // Globale Speicherung der Messdaten
     let currentMeasurements = [];
+    // Zähler, damit nur die neueste Anfrage das UI aktualisieren darf
+    let requestSeq = 0;
 
-    $(document).ready(function() {
+    $(document).ready(function () {
         loadStations();
 
         $("#stationSelect").change(loadAllData);
         $("#btnFilter").click(loadAllData);
         $("#formatSelect").change(loadAllData);
+        $("#warningSelect").change(loadAllData);   // serverseitig gefiltert
         $("#sortSelect").change(applySortAndRender);
-        $("#warningSelect").change(applySortAndRender);
 
-        setInterval(function() {
+        $("#btnReset").click(function () {
+            $("#fromInput, #toInput, #limitInput").val("");
+            $("#warningSelect").val("");
+            loadAllData();
+        });
+
+        setInterval(function () {
             if ($("#stationSelect").val()) {
                 loadAllData();
             }
@@ -405,7 +431,7 @@
 
     function showError(msg) {
         $("#errorMsg").text(msg);
-        $("#errorBox").flex();
+        $("#errorBox").css("display", "flex");
     }
 
     function clearError() {
@@ -417,7 +443,7 @@
             url: "/api/v1/stations",
             type: "GET",
             headers: { "Accept": "application/json" },
-            success: function(stations) {
+            success: function (stations) {
                 let select = $("#stationSelect").empty();
                 if (!stations || stations.length === 0) {
                     select.append('<option value="">Keine Stationen</option>');
@@ -429,7 +455,7 @@
                 });
                 loadAllData();
             },
-            error: function(xhr) {
+            error: function (xhr) {
                 showError("Fehler beim Laden der Stationen: " + getErrorMessage(xhr));
             }
         });
@@ -437,65 +463,80 @@
 
     function loadAllData() {
         clearError();
-        let stationId = $("#stationSelect").val();
+        const stationId = $("#stationSelect").val();
         if (!stationId) return;
 
-        let format = $("#formatSelect").val();
+        const seq = ++requestSeq;
+        const format = $("#formatSelect").val();
+        const dataType = format === "application/xml" ? "xml" : "json";
         $("#loadingSpinner").show();
 
-        // 1. Latest Data
-        $.ajax({
+        // Query-Parameter für die Historie
+        const params = [];
+        const from = $("#fromInput").val();
+        const to = $("#toInput").val();
+        const level = $("#warningSelect").val();
+        const limit = $("#limitInput").val();
+        if (from) params.push("from=" + new Date(from).toISOString());
+        if (to) params.push("to=" + new Date(to).toISOString());
+        if (level) params.push("warningLevel=" + level);
+        if (limit) params.push("limit=" + limit);
+        const queryString = params.length ? "?" + params.join("&") : "";
+
+        updateFilterHint(from, to);
+
+        // 1. Neuester Messwert
+        const latestReq = $.ajax({
             url: `/api/v1/stations/${stationId}/measurements/latest`,
             type: "GET",
             headers: { "Accept": format },
-            dataType: format === "application/xml" ? "xml" : "json",
-            success: function(data) {
-                let m = parseMeasurement(data, format);
-                renderLatestCard(m);
-            },
-            error: function(xhr) {
-                $("#latestDataGrid").html('<div style="grid-column: 1/-1; color: var(--text-muted);">Kein aktiver Messwert verfügbar.</div>');
-                showError("Fehler beim Laden des neuesten Messwerts: " + getErrorMessage(xhr));
-            }
+            dataType: dataType
+        }).done(function (data) {
+            if (seq !== requestSeq) return;
+            renderLatestCard(parseMeasurement(data, format));
+        }).fail(function (xhr) {
+            if (seq !== requestSeq) return;
+            $("#latestDataGrid").html('<div style="grid-column:1/-1; color:var(--text-muted);">Kein Messwert verfügbar.</div>');
+            showError("Fehler beim Laden des neuesten Messwerts: " + getErrorMessage(xhr));
         });
 
-        // 2. History Data
-        let queryParams = [];
-        let from = $("#fromInput").val();
-        let to = $("#toInput").val();
-        let level = $("#warningSelect").val();
-        let limit = $("#limitInput").val();
-
-        if (from) queryParams.push("from=" + new Date(from).toISOString());
-        if (to) queryParams.push("to=" + new Date(to).toISOString());
-        if (level) queryParams.push("warningLevel=" + level);
-        if (limit) queryParams.push("limit=" + limit);
-
-        let queryString = queryParams.length > 0 ? "?" + queryParams.join("&") : "";
-
-        $.ajax({
+        // 2. Historische Messwerte
+        const historyReq = $.ajax({
             url: `/api/v1/stations/${stationId}/measurements` + queryString,
             type: "GET",
             headers: { "Accept": format },
-            dataType: format === "application/xml" ? "xml" : "json",
-            success: function(data) {
-                currentMeasurements = parseMeasurementList(data, format);
-                applySortAndRender();
-                $("#loadingSpinner").hide();
-            },
-            error: function(xhr) {
-                $("#measurementsTable").html('<tr><td colspan="7" style="text-align:center;">Fehler beim Laden der Daten.</td></tr>');
-                showError("Fehler beim Laden der historischen Messwerte: " + getErrorMessage(xhr));
-                $("#loadingSpinner").hide();
-            }
+            dataType: dataType
+        }).done(function (data) {
+            if (seq !== requestSeq) return;
+            currentMeasurements = parseMeasurementList(data, format);
+            applySortAndRender();
+        }).fail(function (xhr) {
+            if (seq !== requestSeq) return;
+            $("#measurementsTable").html('<tr><td colspan="7" style="text-align:center;">Fehler beim Laden der Daten.</td></tr>');
+            showError("Fehler beim Laden der historischen Messwerte: " + getErrorMessage(xhr));
+        });
+
+        // Spinner aus, sobald beide Anfragen fertig sind (egal ob Erfolg oder Fehler)
+        $.when(
+            latestReq.then(null, function () { return $.Deferred().resolve(); }),
+            historyReq.then(null, function () { return $.Deferred().resolve(); })
+        ).always(function () {
+            if (seq === requestSeq) $("#loadingSpinner").hide();
         });
     }
 
-    // Kommentar: Robustes Parsing für JSON & XML mit allen Mapping-Fallbacks
+    function updateFilterHint(from, to) {
+        const parts = [];
+        if (from) parts.push("ab " + formatDate(from));
+        if (to) parts.push("bis " + formatDate(to));
+        $("#filterHint").text(parts.length ? "Zeitfilter aktiv: " + parts.join(" ") : "");
+    }
+
+    // Robustes Parsing für JSON & XML mit Mapping-Fallbacks
     function parseMeasurement(node, format) {
         if (format === "application/xml") {
-            let $node =$(node);
-            let getVal = function(tags) {
+            let $node = $(node);
+            let getVal = function (tags) {
                 for (let tag of tags) {
                     let val = $node.find(tag).first().text();
                     if (val !== undefined && val !== null && val !== "") return val;
@@ -528,12 +569,12 @@
     function parseMeasurementList(data, format) {
         let list = [];
         if (format === "application/xml") {
-            let $xml =$(data);
+            let $xml = $(data);
             let nodes = $xml.find("item, measurement, Measurement");
             if (nodes.length === 0) {
                 nodes = $xml.children().children();
             }
-            nodes.each(function() {
+            nodes.each(function () {
                 list.push(parseMeasurement(this, "application/xml"));
             });
         } else {
@@ -544,23 +585,16 @@
         return list;
     }
 
+    // Nur Sortierung; die Warnstufe wird serverseitig gefiltert
     function applySortAndRender() {
-        let selectedLevel = $("#warningSelect").val();
-        let order = $("#sortSelect").val() || "DESC";
-
-        let filteredList = currentMeasurements.filter(m => {
-            if (!selectedLevel) return true;
-            return String(m.warningLevel).toUpperCase() === String(selectedLevel).toUpperCase();
-        });
-
-        filteredList.sort((a, b) => {
-            let dateA = new Date(a.timestamp);
-            let dateB = new Date(b.timestamp);
-            if (isNaN(dateA)) return 0;
+        const order = $("#sortSelect").val() || "DESC";
+        const list = [...currentMeasurements].sort((a, b) => {
+            const dateA = new Date(a.timestamp);
+            const dateB = new Date(b.timestamp);
+            if (isNaN(dateA) || isNaN(dateB)) return 0;
             return order === "DESC" ? dateB - dateA : dateA - dateB;
         });
-
-        renderTable(filteredList);
+        renderTable(list);
     }
 
     function formatDate(isoStr) {
@@ -578,7 +612,7 @@
         </div>
         <div class="metric-card">
             <span class="label"><i class="fa-solid fa-ruler-vertical"></i> Wasserstand</span>
-            <span class="value">${m.waterLevel} <span class="unit">cm</span></span>
+            <span class="value">${m.waterLevel} <span class="unit">m</span></span>
         </div>
         <div class="metric-card">
             <span class="label"><i class="fa-solid fa-water"></i> Durchfluss</span>
@@ -631,8 +665,10 @@
                 let json = JSON.parse(xhr.responseText);
                 if (json.message) return json.message;
             } catch (e) {
-                let xmlMsg = $(xhr.responseText).find("message").text();
-                if (xmlMsg) return xmlMsg;
+                try {
+                    let xmlMsg = $(xhr.responseText).find("message").text();
+                    if (xmlMsg) return xmlMsg;
+                } catch (e2) { /* ignorieren */ }
             }
         }
         return xhr.statusText + " (Status " + xhr.status + ")";

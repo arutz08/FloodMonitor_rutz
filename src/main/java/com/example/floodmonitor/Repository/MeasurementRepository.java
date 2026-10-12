@@ -1,4 +1,4 @@
-package com.example.floodmonitor.Repository;
+package com.example.floodmonitor.repository;
 
 import com.example.floodmonitor.model.Measurement;
 import org.springframework.stereotype.Repository;
@@ -33,5 +33,9 @@ public class MeasurementRepository {
         List<Measurement> list = data.get(stationId);
         if (list == null || list.isEmpty()) return Optional.empty();
         return Optional.of(list.get(list.size() - 1));
+    }
+
+    public void deleteAll() {
+        data.clear();
     }
 }
