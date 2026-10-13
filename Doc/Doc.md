@@ -4,15 +4,34 @@ REST-API mit Spring Boot, die Pegelmessstationen simuliert, Warnstufen berechnet
 
 ## Inhaltsverzeichnis
 
-1. [Startanleitung](#startanleitung)
-2. [Simulationsregeln](#simulationsregeln)
-3. [Warnstufen](#warnstufen)
-4. [REST-Schnittstellen](#rest-schnittstellen)
-5. [Zwischen JSON und XML wechseln](#zwischen-json-und-xml-wechseln)
-6. [Beispiele für alle Endpoints](#beispiele-für-alle-endpoints)
-7. [Fehlercodes](#fehlercodes)
+1. [Arbeitsschritte](#arbeitsschritte)
+2. [Startanleitung](#startanleitung)
+3. [Simulationsregeln](#simulationsregeln)
+4. [Warnstufen](#warnstufen)
+5. [REST-Schnittstellen](#rest-schnittstellen)
+6. [Zwischen JSON und XML wechseln](#zwischen-json-und-xml-wechseln)
+7. [Beispiele für alle Endpoints](#beispiele-für-alle-endpoints)
+8. [Fehlercodes](#fehlercodes)
 
 ---
+## Arbeitsschritte
+
+Dieser Abschnitt protokolliert, in welcher Reihenfolge das Projekt umgesetzt wurde.
+
+| Nr. | Arbeitsschritt | Beschreibung | Status |
+|---|---|---|---|
+| 1 | Projektsetup | Spring-Boot-Projekt mit Gradle (Java 17) angelegt, Abhängigkeiten für Web, XML (Jackson) und OpenAPI eingebunden | ✅ |
+| 2 | Datenmodell | Klassen `Station` und `Measurement` sowie Enums für Status (`ACTIVE`, `MAINTENANCE`, `DISABLED`, `FAILED`) und Warnstufe (`NORMAL`, `WARNING`, `CRITICAL`, `UNKNOWN`) erstellt | ✅ |
+| 3 | Endpoint-Design | REST-Pfade, Filterparameter und Statuscodes festgelegt (`/api/v1/stations`, `/measurements`, `/statistics`, `/alerts`, `/count`) | ✅ |
+| 4 | Messwert-Simulator | Simulation aus der vorherigen Messung (Niederschlag, Wasserstand, Durchfluss, Temperatur, Akku, Wartungslogik), konfigurierbar über `simulation.interval` und `simulation.enabled` | ✅ |
+| 5 | Warnstufen-Berechnung | Serverseitige Berechnung anhand von Warn- und kritischem Schwellwert, Warnstufe wird pro Messung und an der Station gespeichert | ✅ |
+| 6 | REST-Controller | GET-, POST- und PATCH-Endpoints implementiert, inklusive Filtern, Validierung (`from`/`to`, `limit`) und Fehlerbehandlung (400, 404, 409) | ✅ |
+| 7 | Content Negotiation | Ausgabe wahlweise als JSON oder XML über den `Accept`-Header, `406` bei nicht unterstützten Formaten | ✅ |
+| 8 | Statistik und Warnungen | Auswertung (Min/Max/Durchschnitt, Niederschlagssumme, Warnungsanzahl) und Alert-Endpoint umgesetzt | ✅ |
+| 9 | Restrukturierung | Aufteilung in Schichten (Controller, Service, Repository), Historie auf 1000 Messungen pro Station begrenzt | ✅ |
+| 10 | Web-Client | Einfache Oberfläche zur Darstellung der REST-Daten mit Format-Umschaltung (JSON/XML) | ✅ |
+| 11 | Tests | Tests mit Profil `test` (Simulation aus, feste Testdaten) und manuelle Prüfung mit `curl` | ✅ |
+| 12 | Dokumentation | OpenAPI/Swagger-UI eingebunden, diese README mit Beispielen für alle Endpoints geschrieben | ✅ |
 
 ## Startanleitung
 
